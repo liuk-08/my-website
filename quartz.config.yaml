@@ -199,7 +199,7 @@ plugins:
     options:
       links:
         GitHub: https://github.com/liuk-08
-        知乎: https://www.zhihu.com/people/liuk-08
+        知乎: https://www.zhihu.com/people/Liuk
   - source: github:quartz-community/recent-notes
     enabled: false
   - source: github:quartz-community/spacer
