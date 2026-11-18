@@ -2,7 +2,7 @@
 
 ## 当前决定（2026-11-18，覆盖下方历史方案）
 
-用户明确要求移除左侧“笔记 Notes@USTC”树，右侧已有笔记文章目录。现在仅过滤左侧重复目录，保留首页/笔记/研究入口、右侧目录和全部学习资料。scripts/patch-explorer-sort.mjs 在构建时应用过滤，scripts/verify-notes-navigation.mjs 验证过滤、主入口排序及右侧目录保留。
+本地排版：左侧一级为笔记、研究。笔记下的 Notes 和 Notes@USTC 分别由 content/笔记/Notes.md 和 content/笔记/Notes@USTC.md 维护。Notes 默认折叠，展开后按正文顺序显示所有学科。Notes@USTC 展示学期及课程，导航定位到相应资料页标题。研究下的“量子精密测量x暗物质探测”暂定位到研究页中的建设中章节。右侧保留文章目录。
 
 ## 2026-11-18：Notes@USTC 导航修复
 
