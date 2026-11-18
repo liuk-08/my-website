@@ -5,6 +5,11 @@ import vm from "node:vm";
 const bundle = readFileSync(new URL("../.quartz/plugins/explorer/dist/index.js", import.meta.url), "utf8");
 const source = bundle.match(/mapFn: (\(node\) => \{\s*\/\* notes-navigation:start \*\/[\s\S]*?\/\* notes-navigation:end \*\/\s*\}),/)[1];
 const map = vm.runInNewContext(`(${source})`);
+const sortSource = bundle.match(/sortFn: (\(a2, b2\) => \{\s*\/\* source-order:start \*\/[\s\S]*?\/\* source-order:end \*\/\s*\}),/)[1];
+const sort = vm.runInNewContext(`(${sortSource})`);
+const markdown = readFileSync(new URL("../content/笔记.md", import.meta.url), "utf8");
+const expectedTerms = [...markdown.matchAll(/^## (.+)$/gm)].map(match => match[1].trim());
+const expectedCourses = [...markdown.matchAll(/^### (.+)$/gm)].map(match => match[1].trim());
 class Node {
   constructor(slugSegments, data) {
     Object.assign(this, { slugSegments, data, children: [], isFolder: false });
@@ -20,9 +25,12 @@ root.children.push(oldNotes, other);
 root.map(map);
 assert.equal(root.children.length, 2);
 assert.equal(root.children[1], other);
-assert.equal(oldNotes.children.length, 2);
+oldNotes.children.reverse().sort(sort);
+for (const term of oldNotes.children) term.children.reverse().sort(sort);
+assert.deepEqual(Array.from(oldNotes.children, term => term.displayName), expectedTerms);
 const courses = oldNotes.children.flatMap(term => term.children);
-assert.equal(courses.length, 8);
+assert.deepEqual(Array.from(courses, course => course.data.title), expectedCourses);
+assert.equal(courses.length, expectedCourses.length);
 const html = readFileSync(new URL("../public/笔记.html", import.meta.url), "utf8");
 assert.ok(html.includes('data-behavior="collapse"'), "Semester folders must expand on click");
 for (const course of courses) {
@@ -35,5 +43,5 @@ for (const course of courses) {
 }
 root.map(map);
 assert.equal(root.children.length, 2, "Repeated render must not duplicate navigation");
-assert.equal(oldNotes.children.flatMap(term => term.children).length, 8);
-console.log("PASS: 2 semesters, 8 course links, all built anchors exist, repeat-safe.");
+assert.equal(oldNotes.children.flatMap(term => term.children).length, expectedCourses.length);
+console.log("PASS: semester/course order matches source, all anchors exist, repeat-safe.");

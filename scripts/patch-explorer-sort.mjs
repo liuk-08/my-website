@@ -13,13 +13,17 @@ const files = [
 ];
 
 const customSortFn = `sortFn: (a2, b2) => {
-    const order = ["首页", "笔记", "研究"]
-    const ai = order.indexOf(a2.displayName ?? "")
-    const bi = order.indexOf(b2.displayName ?? "")
-    if (ai !== -1 || bi !== -1) {
-      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+    /* source-order:start */
+    if (a2.navigationOrder !== undefined && b2.navigationOrder !== undefined) {
+      return a2.navigationOrder - b2.navigationOrder;
     }
-`;
+    const order = ["首页", "笔记", "研究", "笔记-notes@ustc"];
+    const ai = a2.slugSegments.length === 1 ? order.indexOf(a2.slugSegment) : -1;
+    const bi = b2.slugSegments.length === 1 ? order.indexOf(b2.slugSegment) : -1;
+    if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    return (a2.displayName || "").localeCompare(b2.displayName || "", "zh-CN", { numeric: true });
+    /* source-order:end */
+  },`;
 
 // Derive navigation from the existing summary, including PDF-only courses.
 const notes = readFileSync(join(__dirname, "..", "content", "笔记.md"), "utf-8");
@@ -51,14 +55,16 @@ const navigationMap = `mapFn: (node) => {
       }
       root.isFolder = true;
       root.displayName = "笔记 Notes@USTC";
-      root.children = ${JSON.stringify(semesters)}.map((term) => {
+      root.children = ${JSON.stringify(semesters)}.map((term, termIndex) => {
         const branch = new Node([...root.slugSegments, term.title], null);
         branch.isFolder = true;
         branch.displayName = term.title;
-        branch.children = term.courses.map((course) => {
+        branch.navigationOrder = termIndex;
+        branch.children = term.courses.map((course, courseIndex) => {
           const leaf = new Node([...branch.slugSegments, course.title], {
             slug: "笔记#" + course.anchor, title: course.title
           });
+          leaf.navigationOrder = courseIndex;
           return leaf;
         });
         return branch;
@@ -77,16 +83,9 @@ for (const filePath of files) {
   content = content.replace(mapPattern, () => navigationMap);
   writeFileSync(filePath, content, "utf-8");
 
-  // Check if already patched
-  if (content.includes('const order = ["首页", "笔记", "研究"]')) {
-    console.log(`Already patched: ${filePath}`);
-    patched++;
-    continue;
-  }
-
-  const oldSortFn = `sortFn: (a2, b2) => {`;
-  if (content.includes(oldSortFn)) {
-    content = content.replace(oldSortFn, customSortFn);
+  const sortPattern = /sortFn: \(a2, b2\) => \{[\s\S]*?\r?\n  \},\r?\n  filterFn:/;
+  if (sortPattern.test(content)) {
+    content = content.replace(sortPattern, () => customSortFn + "\n  filterFn:");
     writeFileSync(filePath, content, "utf-8");
     console.log(`Patched: ${filePath}`);
     patched++;
